@@ -11,6 +11,7 @@ st.caption("Accurate blackjack engine, strict Martingale logic, and detailed han
 st.sidebar.header("Simulation Parameters")
 bankroll_start = st.sidebar.number_input("Starting bankroll ($)", value=6000, step=100)
 base_bet = st.sidebar.number_input("Base bet ($)", value=25, step=5)
+bet_multiplier = st.sidebar.number_input("Bet multiplier after loss", value=2.0, min_value=1.0, max_value=10.0, step=0.1, help="Standard Martingale uses 2.0. Formula: bet * multiplier^(losses)")
 num_decks = st.sidebar.slider("Number of decks", 1, 8, 6)
 num_players = st.sidebar.slider("Number of players at table", 1, 6, 3)
 num_hands = st.sidebar.number_input("Number of hands to simulate", value=200, step=50)
@@ -18,10 +19,11 @@ dealer_hits_soft_17 = st.sidebar.toggle("Dealer hits soft 17", value=False)
 random_seed = st.sidebar.number_input("Random seed", value=42, step=1)
 
 st.sidebar.markdown("---")
-st.sidebar.info("""
+st.sidebar.info(f"""
 **Martingale Betting Rules**
 - Start at base bet.
-- Double bet after every loss (B, 2B, 4B, 8B, ...).
+- Multiply bet after every loss: B, {bet_multiplier}B, {bet_multiplier**2}B, {bet_multiplier**3}B, ...
+- Formula: base_bet × multiplier^(consecutive_losses)
 - Reset to base after a win.
 - If required next bet exceeds bankroll → BUST.
 
@@ -38,13 +40,13 @@ np.random.seed(random_seed)
 shoe = Shoe(num_decks=num_decks)
 
 
-def simulate_martingale(bankroll_start, base_bet, shoe, num_players, num_hands, dealer_hits_soft_17):
+def simulate_martingale(bankroll_start, base_bet, bet_multiplier, shoe, num_players, num_hands, dealer_hits_soft_17):
     bankroll = bankroll_start
     loss_streak = 0
     records = []
 
     for hand_num in range(1, num_hands + 1):
-        current_bet = base_bet * (2 ** loss_streak)
+        current_bet = base_bet * (bet_multiplier ** loss_streak)
 
         # If next required bet exceeds bankroll, bust
         if current_bet > bankroll:
@@ -97,7 +99,7 @@ def simulate_martingale(bankroll_start, base_bet, shoe, num_players, num_hands, 
 if st.button("Run Simulation"):
     with st.spinner("Simulating blackjack hands..."):
         df = simulate_martingale(
-            bankroll_start, base_bet, shoe, num_players, num_hands, dealer_hits_soft_17
+            bankroll_start, base_bet, bet_multiplier, shoe, num_players, num_hands, dealer_hits_soft_17
         )
 
     bust = df["result"].eq("BUST").any()
