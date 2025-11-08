@@ -45,8 +45,12 @@ blackjack_martingale/
 └── CONTEXT.md # Project goals & context
 ---
 
+## ✅ Current Features
+- **Adjustable Betting Multiplier**: Customize progression (default 2x for standard Martingale)
+- **Monte Carlo Simulation**: Run N iterations to analyze win/loss rates and probability distributions
+- **Statistical Analysis**: View aggregate metrics including bust rates, profit distributions, and bankroll trajectories
+
 ## 🔍 Future Extensions
 - Basic strategy toggle (dealer-facing vs standard).
-- Multiple simulations for statistical outcomes (distribution of busts).
 - Payout ratio visualization.
-- Monte Carlo run aggregation for expected value over time.
+- Export results to CSV for further analysis.
