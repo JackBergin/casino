@@ -177,6 +177,11 @@ if st.button("Run Simulation"):
             avg_profit = results_df["profit"].mean()
             avg_final_bankroll = results_df["final_bankroll"].mean()
             
+            # Calculate profit statistics for outlier analysis
+            profit_mean = results_df['profit'].mean()
+            profit_std = results_df['profit'].std()
+            profit_median = results_df['profit'].median()
+            
             st.subheader("Monte Carlo Simulation Results")
             st.write(f"**{num_iterations} iterations completed**")
             
@@ -187,13 +192,40 @@ if st.button("Run Simulation"):
             col3.metric("Avg Final Bankroll", f"${avg_final_bankroll:,.2f}")
             col4.metric("Avg Profit", f"${avg_profit:,.2f}")
             
-            # Show distribution chart
+            # Show profit distribution with std dev markers
+            st.markdown("### Profit Distribution")
+            
+            # Display key statistics with visual indicators
+            col_a, col_b, col_c = st.columns(3)
+            with col_a:
+                st.metric("Mean Profit", f"${profit_mean:,.2f}")
+                st.caption("📊 Average across all simulations")
+            with col_b:
+                st.metric("Median Profit", f"${profit_median:,.2f}")
+                st.caption("📍 Middle value (50th percentile)")
+            with col_c:
+                st.metric("Std Deviation", f"${profit_std:,.2f}")
+                st.caption("📏 Measure of spread")
+            
+            # Show standard deviation ranges
+            st.markdown("**Standard Deviation Ranges:**")
+            st.write(f"• **1σ Range**: ${profit_mean - profit_std:,.2f} to ${profit_mean + profit_std:,.2f} (contains ~68% of results)")
+            st.write(f"• **2σ Range**: ${profit_mean - 2*profit_std:,.2f} to ${profit_mean + 2*profit_std:,.2f} (contains ~95% of results)")
+            
+            # Create histogram using Streamlit's bar chart
+            st.markdown("**Profit Histogram:**")
+            hist_data = pd.cut(results_df['profit'], bins=min(50, max(10, num_iterations // 2)))
+            hist_counts = hist_data.value_counts().sort_index()
+            hist_df = pd.DataFrame({
+                'Profit Range': [f"${interval.left:,.0f}" for interval in hist_counts.index],
+                'Frequency': hist_counts.values
+            })
+            hist_df = hist_df.set_index('Profit Range')
+            st.bar_chart(hist_df)
+            
+            # Show final bankroll distribution
             st.markdown("### Final Bankroll Distribution")
             st.bar_chart(results_df["final_bankroll"].value_counts().sort_index())
-            
-            # Show profit distribution
-            st.markdown("### Profit Distribution")
-            st.bar_chart(results_df["profit"])
             
             # Show sample trajectories (max 10)
             st.markdown("### Sample Bankroll Trajectories")
@@ -213,21 +245,65 @@ if st.button("Run Simulation"):
             
             # Summary statistics
             st.markdown("### Statistical Summary")
-            col1, col2 = st.columns(2)
+            
+            # Filter outliers (beyond 1 and 2 standard deviations)
+            within_1_std = results_df[
+                (results_df['profit'] >= profit_mean - profit_std) & 
+                (results_df['profit'] <= profit_mean + profit_std)
+            ]
+            within_2_std = results_df[
+                (results_df['profit'] >= profit_mean - 2*profit_std) & 
+                (results_df['profit'] <= profit_mean + 2*profit_std)
+            ]
+            
+            col1, col2, col3 = st.columns(3)
             
             with col1:
-                st.write("**Profit Statistics:**")
+                st.write("**Overall Profit Statistics:**")
+                st.write(f"- Mean Profit: ${profit_mean:,.2f}")
+                st.write(f"- Median Profit: ${profit_median:,.2f}")
+                st.write(f"- Std Dev: ${profit_std:,.2f}")
                 st.write(f"- Min Profit: ${results_df['profit'].min():,.2f}")
                 st.write(f"- Max Profit: ${results_df['profit'].max():,.2f}")
-                st.write(f"- Median Profit: ${results_df['profit'].median():,.2f}")
-                st.write(f"- Std Dev: ${results_df['profit'].std():,.2f}")
             
             with col2:
+                st.write("**Profit Without Outliers:**")
+                pct_within_1_std = len(within_1_std) / num_iterations * 100
+                pct_within_2_std = len(within_2_std) / num_iterations * 100
+                
+                st.write(f"*Within 1σ ({pct_within_1_std:.1f}% of data):*")
+                if len(within_1_std) > 0:
+                    st.write(f"- Avg: ${within_1_std['profit'].mean():,.2f}")
+                    st.write(f"- Range: ${within_1_std['profit'].min():,.2f} to ${within_1_std['profit'].max():,.2f}")
+                else:
+                    st.write("- No data")
+                
+                st.write(f"*Within 2σ ({pct_within_2_std:.1f}% of data):*")
+                if len(within_2_std) > 0:
+                    st.write(f"- Avg: ${within_2_std['profit'].mean():,.2f}")
+                    st.write(f"- Range: ${within_2_std['profit'].min():,.2f} to ${within_2_std['profit'].max():,.2f}")
+                else:
+                    st.write("- No data")
+            
+            with col3:
                 st.write("**Game Statistics:**")
                 st.write(f"- Avg Hands Played: {results_df['hands_played'].mean():.1f}")
                 st.write(f"- Avg Max Loss Streak: {results_df['max_loss_streak'].mean():.1f}")
                 st.write(f"- Max Loss Streak (all): {results_df['max_loss_streak'].max()}")
                 st.write(f"- Busts: {bust_count} / {num_iterations}")
+                st.write(f"- Outliers (>2σ): {num_iterations - len(within_2_std)}")
+            
+            # Add visual representation of data distribution
+            st.markdown("### Profit Distribution Analysis")
+            st.write(f"""
+            **Understanding the data:**
+            - **Mean**: ${profit_mean:,.2f} - Average across all simulations
+            - **Median**: ${profit_median:,.2f} - Middle value (50th percentile)
+            - **1σ range**: ${profit_mean - profit_std:,.2f} to ${profit_mean + profit_std:,.2f} (contains ~68% of typical results)
+            - **2σ range**: ${profit_mean - 2*profit_std:,.2f} to ${profit_mean + 2*profit_std:,.2f} (contains ~95% of typical results)
+            
+            💡 **Typical profit** (excluding extreme outliers beyond 2σ): **${within_2_std['profit'].mean():,.2f}** based on {len(within_2_std)} simulations
+            """)
 
 else:
     st.info("Set your parameters and click **Run Simulation** to begin.")
