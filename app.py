@@ -11,7 +11,24 @@ st.caption("Accurate blackjack engine, strict Martingale logic, and detailed han
 st.sidebar.header("Simulation Parameters")
 bankroll_start = st.sidebar.number_input("Starting bankroll ($)", value=6000, step=100)
 base_bet = st.sidebar.number_input("Base bet ($)", value=25, step=5)
-bet_multiplier = st.sidebar.number_input("Bet multiplier after loss", value=2.0, min_value=1.0, max_value=10.0, step=0.1, help="Standard Martingale uses 2.0. Formula: bet * multiplier^(losses)")
+
+# Strategy Selection
+st.sidebar.subheader("Betting Strategy")
+strategy = st.sidebar.selectbox(
+    "Select Strategy",
+    ["Martingale", "Reverse Martingale", "D'Alembert", "Fibonacci", "Flat Betting"],
+    help="Choose your betting progression strategy"
+)
+
+# Strategy-specific parameters
+if strategy in ["Martingale", "Reverse Martingale"]:
+    bet_multiplier = st.sidebar.number_input("Bet multiplier", value=2.0, min_value=1.0, max_value=10.0, step=0.1, help="How much to multiply bet after win/loss")
+elif strategy == "D'Alembert":
+    bet_increment = st.sidebar.number_input("Bet increment ($)", value=25, step=5, help="Amount to add/subtract from bet")
+else:  # Fibonacci and Flat Betting don't need extra parameters
+    bet_multiplier = 2.0  # Not used, but needed for function signature
+    bet_increment = 25
+
 num_decks = st.sidebar.slider("Number of decks", 1, 8, 6)
 num_players = st.sidebar.slider("Number of players at table", 1, 6, 3)
 num_hands = st.sidebar.number_input("Number of hands to simulate", value=200, step=50)
@@ -23,19 +40,61 @@ num_iterations = st.sidebar.number_input("Number of iterations (cycles)", value=
 random_seed = st.sidebar.number_input("Random seed", value=42, step=1)
 
 st.sidebar.markdown("---")
-st.sidebar.info(f"""
-**Martingale Betting Rules**
-- Start at base bet.
-- Multiply bet after every loss: B, {bet_multiplier}B, {bet_multiplier**2}B, {bet_multiplier**3}B, ...
-- Formula: base_bet × multiplier^(consecutive_losses)
-- Reset to base after a win.
-- If required next bet exceeds bankroll → BUST.
+
+# Dynamic strategy info
+if strategy == "Martingale":
+    strategy_info = f"""
+**Martingale Strategy**
+- Start at base bet
+- Multiply bet by {bet_multiplier} after every loss
+- Reset to base bet after a win
+- Formula: base_bet × {bet_multiplier}^(consecutive_losses)
+- Goal: Recover all losses with one win
+"""
+elif strategy == "Reverse Martingale":
+    strategy_info = f"""
+**Reverse Martingale (Paroli)**
+- Start at base bet
+- Multiply bet by {bet_multiplier} after every WIN
+- Reset to base bet after a loss
+- Ride winning streaks, minimize losses
+- Conservative approach
+"""
+elif strategy == "D'Alembert":
+    strategy_info = f"""
+**D'Alembert Strategy**
+- Start at base bet
+- Add ${bet_increment} after a loss
+- Subtract ${bet_increment} after a win (minimum = base bet)
+- More conservative than Martingale
+- Slower progression, lower risk
+"""
+elif strategy == "Fibonacci":
+    strategy_info = """
+**Fibonacci Strategy**
+- Follow Fibonacci sequence: 1, 1, 2, 3, 5, 8, 13, 21...
+- Move forward in sequence after loss
+- Move back 2 steps after win
+- Mathematical progression
+- Moderate risk
+"""
+else:  # Flat Betting
+    strategy_info = """
+**Flat Betting Strategy**
+- Always bet the same amount (base bet)
+- No progression system
+- Lowest variance, most predictable
+- Pure luck-based results
+"""
+
+st.sidebar.info(strategy_info + """
 
 **Game Rules**
-- Player hits on <17, stands on ≥17.
-- Dealer stands on 17 by default (toggle for soft 17).
-- Aces count as 1 or 11 automatically.
-- Blackjack pays 3:2.
+- Player hits on <17, stands on ≥17
+- Dealer stands on 17 by default (toggle for soft 17)
+- Aces count as 1 or 11 automatically
+- Blackjack pays 3:2
+- If required bet exceeds bankroll → BUST
 """)
 
 # Initialize numpy
